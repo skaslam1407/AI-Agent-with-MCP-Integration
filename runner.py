@@ -12,6 +12,7 @@ from mcp_client import (
 from planner import planner
 from executor import execute_action
 from loop import run_agent_loop
+from loader import thinking
 
 
 load_dotenv()
@@ -44,48 +45,52 @@ Do not mention state.
 Do not mention tools.
 """
 
-    response = client.chat.completions.create(
-        model=os.getenv("MODEL"),
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
+    with thinking("Formulating answer..."):
+        response = client.chat.completions.create(
+            model=os.getenv("MODEL"),
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
 
     return response.choices[0].message.content.strip()
 
 
 async def main():
 
-    client = await connect()
+    mcp = await connect()
 
-    tools = await discover_tools(client)
+    try:
+        tools = await discover_tools(mcp)
 
-    print()
-    print("Available Tools")
-    print("----------------")
+        print()
+        print("Available Tools")
+        print("----------------")
 
-    for tool in tools:
-        print(tool.name)
+        for tool in tools:
+            print(tool.name)
 
-    user_request = input("\nUser : ")
+        user_request = input("\nUser : ")
 
-    state = await run_agent_loop(
-        user_request,
-        planner,
-        execute_action,
-        format_answer,
-        tools,
-        client
-    )
+        state = await run_agent_loop(
+            user_request,
+            planner,
+            execute_action,
+            format_answer,
+            tools,
+            mcp
+        )
 
-    print()
-    print("Final Answer:")
-    print(state["final_answer"])
+        print()
+        print("Final Answer:")
+        # Fallback so we never print an empty answer.
+        print(state["final_answer"] or "Sorry, I could not produce an answer.")
 
-    await disconnect(client)
+    finally:
+        await disconnect(mcp)
 
 
 if __name__ == "__main__":

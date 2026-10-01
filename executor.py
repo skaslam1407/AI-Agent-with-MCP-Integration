@@ -11,7 +11,13 @@ async def execute_action(action, client):
     if hasattr(result, "content"):
 
         if result.content:
-
-            return result.content[0].text
+            texts = []
+            for item in result.content:
+                if hasattr(item, "text") and item.text is not None:
+                    texts.append(str(item.text))
+                elif isinstance(item, str):
+                    texts.append(item)
+            if texts:
+                return "\n".join(texts)
 
     return str(result)
